@@ -207,9 +207,18 @@ let toml_to_map(toml, acc) = match toml
 	    }
     }
 
-read_file("resume.toml")
-|> to_charlist 
-|> scan(_, []) 
-|> parse_stmts
-|> toml_to_map(_, %{})
-|> inspect
+let parse_toml(s) = s
+    |> to_charlist
+    |> scan(_, [])
+    |> parse_stmts
+    |> toml_to_map(_, %{})
+
+let exports = %{parse_toml: fn(s) => parse_toml(s)}
+exports
+
+#read_file("resume.toml")
+#|> to_charlist 
+#|> scan(_, []) 
+#|> parse_stmts
+#|> toml_to_map(_, %{})
+#|> inspect
