@@ -1,5 +1,5 @@
 let is_ident_char(ch) = {
-    let ident_chars = to_charlist("abcdefghijklmnopqrstuvwxyz_")
+    let ident_chars = to_charlist("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
     any([i == ch for i in ident_chars])
 }
 
