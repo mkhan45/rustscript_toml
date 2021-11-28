@@ -1,11 +1,11 @@
-let is_ident_char(ch) = {
+let is_ident_char_fn() = {
     let ident_chars = to_charlist("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
-    any([i == ch for i in ident_chars])
+    fn(ch) => any([i == ch for i in ident_chars])
 }
 
-let is_digit_char(ch) = {
+let is_digit_char_fn() = {
     let digit_chars = to_charlist("0123456789")
-    any([d == ch for d in digit_chars])
+    fn(ch) => any([d == ch for d in digit_chars])
 }
 
 let skip_newlines(ls) = match ls
@@ -13,7 +13,9 @@ let skip_newlines(ls) = match ls
     | _ -> ls
 
 let scan_number(ls) = {
-    let loop(ls, acc) = match ls
+    let is_digit_char = is_digit_char_fn()
+
+    let loop = fn(ls, acc) => match ls
 	| [d | xs] when is_digit_char(d) -> loop(xs, [d | acc])
 	| _ -> (reverse(acc), ls)
 
@@ -23,7 +25,9 @@ let scan_number(ls) = {
 }
 
 let scan_ident(ls) = {
-    let loop(ls, acc) = match ls
+    let is_ident_char = is_ident_char_fn()
+
+    let loop = fn(ls, acc) => match ls
 	| [i | xs] when is_ident_char(i) -> loop(xs, [i | acc])
 	| _ -> (reverse(acc), ls)
 
@@ -65,49 +69,56 @@ let skip_until_newline(ls) = match ls
     | ["\n" | xs] -> xs
     | [_ | xs] -> skip_until_newline(xs)
 
-let scan(ls, acc) = match ls
-    | [] ->
-	reverse(acc)
+let scan(ls) = {
+    let is_ident_char = is_ident_char_fn()
+    let is_digit_char = is_digit_char_fn()
 
-    | [" " | xs] | ["\t" | xs] | ["\n" | xs]->
-	scan(xs, acc)
+    let loop = fn(ls, acc) => match ls
+	| [] ->
+	    reverse(acc)
 
-    | ["[" | xs] ->
-	scan(xs, [:lbracket | acc])
+	| [" " | xs] | ["\t" | xs] | ["\n" | xs]->
+	    loop(xs, acc)
 
-    | ["]" | xs] ->
-	scan(xs, [:rbracket | acc])
+	| ["[" | xs] ->
+	    loop(xs, [:lbracket | acc])
 
-    | ["," | xs] ->
-	scan(xs, [:comma | acc])
+	| ["]" | xs] ->
+	    loop(xs, [:rbracket | acc])
 
-    | ["=" | xs] ->
-	scan(xs, [:equal | acc])
+	| ["," | xs] ->
+	    loop(xs, [:comma | acc])
 
-    | ["#" | xs] -> {
-	let xs = skip_until_newline(xs)
-	scan(xs, acc)
-    }
+	| ["=" | xs] ->
+	    loop(xs, [:equal | acc])
 
-    | ["\"", "\"", "\"" | xs] -> {
-	let (string, remaining) = scan_multiline_string(xs)
-	scan(remaining, [string | acc])
-    }
+	| ["#" | xs] -> {
+	    let xs = skip_until_newline(xs)
+	    loop(xs, acc)
+	}
 
-    | ["\"" | xs] -> {
-	let (string, remaining) = scan_string(xs)
-	scan(remaining, [string | acc])
-    }
+	| ["\"", "\"", "\"" | xs] -> {
+	    let (string, remaining) = scan_multiline_string(xs)
+	    loop(remaining, [string | acc])
+	}
 
-    | [n | _] when is_digit_char(n) -> {
-	let (number, remaining) = scan_number(ls)
-	scan(remaining, [number | acc])
-    }
+	| ["\"" | xs] -> {
+	    let (string, remaining) = scan_string(xs)
+	    loop(remaining, [string | acc])
+	}
 
-    | [ch | _] when is_ident_char(ch) -> {
-	let (ident, remaining) = scan_ident(ls)
-	scan(remaining, [ident | acc])
-    }
+	| [n | _] when is_digit_char(n) -> {
+	    let (number, remaining) = scan_number(ls)
+	    loop(remaining, [number | acc])
+	}
+
+	| [ch | _] when is_ident_char(ch) -> {
+	    let (ident, remaining) = scan_ident(ls)
+	    loop(remaining, [ident | acc])
+	}
+
+    loop(ls, [])
+}
 
 let parse_arr(ls) = {
     let loop(ls, acc) = {
@@ -209,6 +220,6 @@ let toml_to_map(toml, acc) = match toml
 
 let parse_toml(s) = s
     |> to_charlist
-    |> scan(_, [])
+    |> scan
     |> parse_stmts
     |> toml_to_map(_, %{})
